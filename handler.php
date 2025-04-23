@@ -1,14 +1,23 @@
 <?php
+// Suppress warnings to prevent HTML output
+ini_set('display_errors', '0');
+error_reporting(E_ERROR | E_PARSE);
+
 header('Content-Type: application/json');
 
 // Include Composer autoloader
+if (!file_exists('vendor/autoload.php')) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Composer autoloader not found']);
+    exit;
+}
 require_once 'vendor/autoload.php';
 use Firebase\JWT\JWT;
 use Firebase\JWT\JWK;
 use Firebase\JWT\Key;
 
 // Check if token is received
-if (!isset($_POST['token'])) {
+if (!isset($_POST['token']) || empty($_POST['token'])) {
     http_response_code(400);
     echo json_encode(['error' => 'No token provided']);
     exit;
@@ -24,14 +33,19 @@ $jwksUri = "https://login.microsoftonline.com/$tenantId/discovery/v2.0/keys";
 // Log request details
 error_log("SSO Token: $ssoToken");
 
-// Fetch JWKS (JSON Web Key Set) to validate token
-$jwksResponse = file_get_contents($jwksUri);
+// Fetch JWKS with error handling
+$jwksResponse = @file_get_contents($jwksUri);
 if ($jwksResponse === false) {
     http_response_code(500);
-    echo json_encode(['error' => 'Failed to fetch JWKS']);
+    echo json_encode(['error' => 'Failed to fetch JWKS', 'details' => 'Unable to access ' . $jwksUri]);
     exit;
 }
 $jwks = json_decode($jwksResponse, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Invalid JWKS response', 'details' => json_last_error_msg()]);
+    exit;
+}
 
 // Validate and decode JWT
 try {
@@ -45,12 +59,12 @@ try {
     // Verify audience and issuer
     if ($decodedArray['aud'] !== $expectedAudience) {
         http_response_code(401);
-        echo json_encode(['error' => 'Invalid token audience']);
+        echo json_encode(['error' => 'Invalid token audience', 'details' => 'Expected: ' . $expectedAudience]);
         exit;
     }
     if ($decodedArray['iss'] !== "https://sts.windows.net/$tenantId/") {
         http_response_code(401);
-        echo json_encode(['error' => 'Invalid token issuer']);
+        echo json_encode(['error' => 'Invalid token issuer', 'details' => 'Expected: https://sts.windows.net/' . $tenantId . '/']);
         exit;
     }
 
