@@ -57,6 +57,9 @@ $graphResponse = curl_exec($ch);
 $graphHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
+// Log the full Graph response for debugging
+error_log("Graph API response: " . $graphResponse);
+
 if ($graphHttpCode != 200) {
     http_response_code($graphHttpCode);
     echo json_encode(['error' => 'Graph API call failed', 'details' => $graphResponse]);
@@ -65,15 +68,19 @@ if ($graphHttpCode != 200) {
 
 $userData = json_decode($graphResponse, true);
 
-// Extract name and email
-$responseData = [
-    'name' => $userData['displayName'] ?? 'Unknown',
-    'email' => $userData['mail'] ?? $userData['userPrincipalName'] ?? 'Unknown'
-];
+// Extract name and email with fallbacks
+$name = $userData['displayName'] ?? $userData['givenName'] ?? 'Unknown Name';
+$email = $userData['mail'] ?? $userData['userPrincipalName'] ?? 'Unknown Email';
 
-// Print email (for debugging or logging)
-error_log("User email: " . $responseData['email']);
+// Log extracted data
+error_log("Extracted name: $name");
+error_log("Extracted email: $email");
 
 // Return JSON response to front-end
+$responseData = [
+    'name' => $name,
+    'email' => $email
+];
+
 echo json_encode($responseData);
 ?>

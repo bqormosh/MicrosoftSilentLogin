@@ -20,26 +20,38 @@ microsoftTeams.app.initialize().then(() => {
     successCallback: function(token) {
       document.getElementById("output").innerText = "Token received. Sending to PHP...";
 
-      // Send token to PHP via POST
-      fetch("handler.php", {
+      fetch("https://microsoftsilentlogin.onrender.com/handler.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
         body: "token=" + encodeURIComponent(token)
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
-        document.getElementById("output").innerText = "Hello, " + data.name + " (" + data.email + ")";
+        if (data.error) {
+          document.getElementById("output").innerText = `Error: ${data.error} - ${data.details || ''}`;
+        } else {
+          const name = data.name || 'Unknown Name';
+          const email = data.email || 'Unknown Email';
+          document.getElementById("output").innerText = `Hello, ${name} (${email})`;
+        }
       })
       .catch(error => {
-        document.getElementById("output").innerText = "Failed to verify token: " + error;
+        document.getElementById("output").innerText = `Failed to verify token: ${error.message}`;
       });
     },
     failureCallback: function(error) {
-      document.getElementById("output").innerText = "Token request failed: " + error;
+      document.getElementById("output").innerText = `Token request failed: ${error}`;
     }
   });
+}).catch(error => {
+  document.getElementById("output").innerText = `Initialization failed: ${error}`;
 });
 </script>
 
