@@ -40,12 +40,35 @@ if ($jwksResponse === false) {
     echo json_encode(['error' => 'Failed to fetch JWKS', 'details' => 'Unable to access ' . $jwksUri]);
     exit;
 }
+
+// Log raw JWKS response for debugging
+error_log("Raw JWKS response: " . substr($jwksResponse, 0, 500)); // Limit length to avoid log overflow
+
 $jwks = json_decode($jwksResponse, true);
 if (json_last_error() !== JSON_ERROR_NONE) {
     http_response_code(500);
     echo json_encode(['error' => 'Invalid JWKS response', 'details' => json_last_error_msg()]);
     exit;
 }
+
+// Ensure JWKS has keys
+if (!isset($jwks['keys']) || !is_array($jwks['keys']) || empty($jwks['keys'])) {
+    http_response_code(500);
+    echo json_encode(['error' => 'No keys found in JWKS']);
+    exit;
+}
+
+// Add default alg if missing (Azure AD typically uses RS256)
+foreach ($jwks['keys'] as &$key) {
+    if (!isset($key['alg'])) {
+        $key['alg'] = 'RS256';
+        error_log("Added default alg=RS256 to JWK with kid=" . ($key['kid'] ?? 'unknown'));
+    }
+}
+unset($key);
+
+// Log modified JWKS
+error_log("Processed JWKS: " . json_encode($jwks, JSON_PRETTY_PRINT));
 
 // Validate and decode JWT
 try {
