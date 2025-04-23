@@ -29,7 +29,9 @@ microsoftTeams.app.initialize().then(() => {
       })
       .then(response => {
         if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+          return response.json().then(errorData => {
+            throw new Error(`HTTP error! Status: ${response.status}, Details: ${JSON.stringify(errorData)}`);
+          });
         }
         return response.json();
       })
