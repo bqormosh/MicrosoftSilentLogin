@@ -17,6 +17,10 @@ $resource = 'api://microsoftsilentlogin.onrender.com/3a6cc383-da59-4665-94b5-a5a
 $graphScope = 'https://graph.microsoft.com/User.Read';
 $scope = "$resource/access_as_user $graphScope";
 
+// Log request details
+error_log("SSO Token: $ssoToken");
+error_log("Requested scope: $scope");
+
 // Exchange SSO token for access token
 $tokenUrl = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token";
 $data = [
@@ -36,6 +40,10 @@ $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
+// Log token exchange response
+error_log("Token exchange HTTP code: $httpCode");
+error_log("Token exchange response: $response");
+
 if ($httpCode != 200) {
     http_response_code($httpCode);
     echo json_encode(['error' => 'Token exchange failed', 'details' => $response]);
@@ -44,6 +52,10 @@ if ($httpCode != 200) {
 
 $tokenData = json_decode($response, true);
 $accessToken = $tokenData['access_token'];
+
+// Log access token details
+error_log("Access token: $accessToken");
+error_log("Token response: " . print_r($tokenData, true));
 
 // Call Microsoft Graph to get user details
 $graphUrl = 'https://graph.microsoft.com/v1.0/me';
@@ -57,8 +69,9 @@ $graphResponse = curl_exec($ch);
 $graphHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
-// Log the full Graph response for debugging
-error_log("Graph API response: " . $graphResponse);
+// Log Graph API response
+error_log("Graph API HTTP code: $graphHttpCode");
+error_log("Graph API response: $graphResponse");
 
 if ($graphHttpCode != 200) {
     http_response_code($graphHttpCode);
